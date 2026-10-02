@@ -1,0 +1,19 @@
+{
+  "name": "@maxume/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "gen-types": "supabase gen types typescript --local > src/types.generated.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.0",
+    "@supabase/ssr": "^0.12.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^20"
+  }
+}
