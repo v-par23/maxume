@@ -5,10 +5,12 @@ import { signOut } from "@/lib/actions/auth"
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview" },
+  { href: "/chat", label: "Agent" },
   { href: "/profile", label: "Profile" },
   { href: "/jobs", label: "Work history" },
   { href: "/projects", label: "Projects" },
   { href: "/skills", label: "Skills" },
+  { href: "/settings/api-key", label: "API key" },
 ]
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {

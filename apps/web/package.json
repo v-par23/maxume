@@ -15,7 +15,11 @@
     "react-dom": "19.2.8",
     "@supabase/supabase-js": "^2.117.0",
     "@supabase/ssr": "^0.12.7",
-    "@maxume/db": "workspace:*"
+    "server-only": "^0.0.1",
+    "@maxume/db": "workspace:*",
+    "@maxume/schemas": "workspace:*",
+    "@maxume/agent-core": "workspace:*",
+    "@maxume/integrations": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
