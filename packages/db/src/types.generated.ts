@@ -512,7 +512,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_decrypted_llm_api_key: {
+        Args: { p_provider?: string; p_user_id: string };
+        Returns: string;
+      };
+      has_llm_api_key: { Args: { p_provider?: string; p_user_id: string }; Returns: boolean };
+      set_llm_api_key: {
+        Args: { p_api_key: string; p_provider: string; p_user_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;
