@@ -19,6 +19,18 @@ export function createServerSupabaseClient(cookies: CookieAdapter) {
 }
 
 /**
+ * Anonymous client for public, unauthenticated reads (e.g. the /u/[slug] portfolio
+ * page). No session persistence — a fresh client per request is expected.
+ */
+export function createPublicSupabaseClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
+/**
  * Service-role client for trusted backend code only (apply-executor, resume renderer,
  * GitHub sync). Bypasses RLS — never expose to client code or use for a request's own
  * user-scoped reads, only for operations that have already resolved and authorized the user.

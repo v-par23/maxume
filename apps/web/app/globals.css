@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Tailwind's automatic content detection doesn't reliably follow pnpm
+   workspace symlinks, so the portfolio templates need an explicit @source. */
+@source "../../../packages/portfolio-templates/src";
 
 :root {
   --background: #ffffff;
