@@ -10,6 +10,8 @@
   "dependencies": {
     "@maxume/db": "workspace:*",
     "@maxume/schemas": "workspace:*",
+    "@maxume/resume-renderer": "workspace:*",
+    "@maxume/resume-templates": "workspace:*",
     "@supabase/supabase-js": "^2.117.0"
   },
   "devDependencies": {

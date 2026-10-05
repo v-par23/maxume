@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@maxume/db"
+import { renderResumePdf } from "@maxume/resume-renderer"
+import type { ResumeData } from "@maxume/resume-templates"
 
 type ServiceClient = SupabaseClient<Database>
 type ChangeSetItemRow = Database["public"]["Tables"]["change_set_items"]["Row"]
@@ -55,7 +57,7 @@ export async function applyChangeSet(supabase: ServiceClient, runId: string): Pr
     await supabase.from("change_set_items").update({ status: "applying" }).eq("id", item.id)
 
     try {
-      await applyItem(supabase, run.user_id, item)
+      await applyItem(supabase, run.user_id, runId, item)
       await supabase
         .from("change_set_items")
         .update({ status: "applied", applied_at: new Date().toISOString(), error: null })
@@ -82,6 +84,7 @@ export async function applyChangeSet(supabase: ServiceClient, runId: string): Pr
 async function applyItem(
   supabase: ServiceClient,
   userId: string,
+  runId: string,
   item: ChangeSetItemRow
 ): Promise<void> {
   const payload = (item.payload ?? {}) as Record<string, unknown>
@@ -174,11 +177,96 @@ async function applyItem(
       return
     }
 
-    case "resume":
-      throw new Error("Resume generation isn't implemented yet (coming in Phase C).")
+    case "resume": {
+      const templateId =
+        typeof payload.template_id === "string" ? payload.template_id : "classic"
+      const data = await buildResumeSnapshot(supabase, userId)
+      const pdfBuffer = await renderResumePdf(templateId, data)
+
+      const { data: lastVersion } = await supabase
+        .from("resume_versions")
+        .select("version_number")
+        .eq("user_id", userId)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const versionNumber = (lastVersion?.version_number ?? 0) + 1
+      const storagePath = `${userId}/${versionNumber}.pdf`
+
+      const { error: uploadError } = await supabase.storage
+        .from("resumes")
+        .upload(storagePath, pdfBuffer, { contentType: "application/pdf", upsert: false })
+      if (uploadError) throw new Error(uploadError.message)
+
+      await supabase
+        .from("resume_versions")
+        .update({ is_active: false })
+        .eq("user_id", userId)
+        .eq("is_active", true)
+
+      const { error: insertError } = await supabase.from("resume_versions").insert({
+        user_id: userId,
+        version_number: versionNumber,
+        template_id: templateId,
+        data_snapshot: data as unknown as Database["public"]["Tables"]["resume_versions"]["Insert"]["data_snapshot"],
+        pdf_storage_path: storagePath,
+        is_active: true,
+        generated_by_run_id: runId,
+      })
+      if (insertError) throw new Error(insertError.message)
+      return
+    }
 
     case "github_readme":
       throw new Error("GitHub sync isn't implemented yet (coming in Phase E).")
+  }
+}
+
+/** Freezes the user's current profile/jobs/projects/skills into resume-ready shape. */
+async function buildResumeSnapshot(supabase: ServiceClient, userId: string): Promise<ResumeData> {
+  const [{ data: profile }, { data: jobs }, { data: projects }, { data: skills }] =
+    await Promise.all([
+      supabase.from("profiles").select("*").eq("id", userId).single(),
+      supabase
+        .from("work_history")
+        .select("*")
+        .eq("user_id", userId)
+        .order("display_order", { ascending: true }),
+      supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", userId)
+        .order("display_order", { ascending: true }),
+      supabase.from("skills").select("*").eq("user_id", userId),
+    ])
+
+  if (!profile) throw new Error(`Profile not found for user ${userId}`)
+
+  return {
+    full_name: profile.full_name,
+    headline: profile.headline,
+    bio: profile.bio,
+    location: profile.location,
+    contact_email: profile.contact_email,
+    jobs: (jobs ?? []).map((job) => ({
+      company: job.company,
+      title: job.title,
+      location: job.location,
+      start_date: job.start_date,
+      end_date: job.end_date,
+      is_current: job.is_current,
+      description: job.description,
+      highlights: job.highlights,
+    })),
+    projects: (projects ?? []).map((project) => ({
+      name: project.name,
+      summary: project.summary,
+      description: project.description,
+      tech_stack: project.tech_stack,
+      highlights: project.highlights,
+      links: project.links as { repo_url?: string; live_url?: string } | null,
+    })),
+    skills: (skills ?? []).map((skill) => ({ name: skill.name, category: skill.category })),
   }
 }
 
