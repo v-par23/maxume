@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/jobs", label: "Work history" },
   { href: "/projects", label: "Projects" },
   { href: "/skills", label: "Skills" },
+  { href: "/resume", label: "Resume" },
   { href: "/settings/api-key", label: "API key" },
 ]
 
