@@ -19,7 +19,8 @@
     "@maxume/db": "workspace:*",
     "@maxume/schemas": "workspace:*",
     "@maxume/agent-core": "workspace:*",
-    "@maxume/integrations": "workspace:*"
+    "@maxume/integrations": "workspace:*",
+    "@maxume/portfolio-templates": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

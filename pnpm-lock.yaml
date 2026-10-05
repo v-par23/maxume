@@ -184,6 +184,9 @@ importers:
       '@maxume/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
+      '@maxume/portfolio-templates':
+        specifier: workspace:*
+        version: link:../../packages/portfolio-templates
       '@maxume/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
@@ -287,6 +290,19 @@ importers:
       '@types/node':
         specifier: ^20
         version: 20.19.43
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/portfolio-templates:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
