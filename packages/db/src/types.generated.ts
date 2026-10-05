@@ -512,12 +512,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      disconnect_connected_account: {
+        Args: { p_provider: string; p_user_id: string };
+        Returns: undefined;
+      };
+      get_decrypted_connected_account_token: {
+        Args: { p_provider: string; p_user_id: string };
+        Returns: {
+          access_token: string;
+          provider_username: string;
+        }[];
+      };
       get_decrypted_llm_api_key: {
         Args: { p_provider?: string; p_user_id: string };
         Returns: string;
       };
       get_portfolio_by_slug: { Args: { p_slug: string }; Returns: Json };
       has_llm_api_key: { Args: { p_provider?: string; p_user_id: string }; Returns: boolean };
+      set_connected_account_token: {
+        Args: {
+          p_access_token: string;
+          p_provider: string;
+          p_provider_user_id: string;
+          p_provider_username: string;
+          p_scopes: string[];
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       set_llm_api_key: {
         Args: { p_api_key: string; p_provider: string; p_user_id: string };
         Returns: undefined;
