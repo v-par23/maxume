@@ -516,6 +516,7 @@ export type Database = {
         Args: { p_provider?: string; p_user_id: string };
         Returns: string;
       };
+      get_portfolio_by_slug: { Args: { p_slug: string }; Returns: Json };
       has_llm_api_key: { Args: { p_provider?: string; p_user_id: string }; Returns: boolean };
       set_llm_api_key: {
         Args: { p_api_key: string; p_provider: string; p_user_id: string };
