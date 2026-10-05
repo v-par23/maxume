@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/resume", label: "Resume" },
   { href: "/settings/integrations", label: "Integrations" },
   { href: "/settings/api-key", label: "API key" },
+  { href: "/settings/tokens", label: "CLI tokens" },
 ]
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
