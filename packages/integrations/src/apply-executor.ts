@@ -2,6 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@maxume/db"
 import { renderResumePdf } from "@maxume/resume-renderer"
 import type { ResumeData } from "@maxume/resume-templates"
+import {
+  createGithubClient,
+  getProfileReadme,
+  profileRepoExists,
+  createProfileRepo,
+  commitProfileReadme,
+  mergeReadmeSections,
+} from "./github"
 
 type ServiceClient = SupabaseClient<Database>
 type ChangeSetItemRow = Database["public"]["Tables"]["change_set_items"]["Row"]
@@ -217,8 +225,38 @@ async function applyItem(
       return
     }
 
-    case "github_readme":
-      throw new Error("GitHub sync isn't implemented yet (coming in Phase E).")
+    case "github_readme": {
+      const { data: rows } = await supabase.rpc("get_decrypted_connected_account_token", {
+        p_user_id: userId,
+        p_provider: "github",
+      })
+      const account = rows?.[0]
+      if (!account) {
+        throw new Error("GitHub is not connected. Connect it in Settings → Integrations.")
+      }
+
+      const sections = (payload.sections ?? {}) as Record<string, string>
+      const owner = account.provider_username
+      const octokit = createGithubClient(account.access_token)
+
+      // Custom repo targeting (payload.repo) isn't implemented yet — v1 only
+      // syncs the special profile README repo ({owner}/{owner}).
+      if (!(await profileRepoExists(octokit, owner))) {
+        await createProfileRepo(octokit, owner)
+      }
+
+      const existing = await getProfileReadme(octokit, owner)
+      const merged = mergeReadmeSections(existing?.content ?? null, sections, owner)
+      await commitProfileReadme(
+        octokit,
+        owner,
+        existing?.path ?? "README.md",
+        merged,
+        existing?.sha ?? null,
+        "Update profile README via Maxume"
+      )
+      return
+    }
   }
 }
 
