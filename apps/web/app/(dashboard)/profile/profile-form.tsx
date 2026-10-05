@@ -1,6 +1,7 @@
 "use client"
 
 import { useActionState, type ReactNode } from "react"
+import Link from "next/link"
 import { updateProfile, type ProfileFormState } from "@/lib/actions/profile"
 import type { Tables } from "@maxume/db"
 
@@ -8,6 +9,7 @@ const initialState: ProfileFormState = {}
 
 export function ProfileForm({ profile }: { profile: Tables<"profiles"> }) {
   const [state, formAction, pending] = useActionState(updateProfile, initialState)
+  const themeConfig = (profile.theme_config ?? {}) as { accent_color?: string; font_pairing?: string }
 
   return (
     <form action={formAction} className="flex max-w-lg flex-col gap-4">
@@ -50,6 +52,43 @@ export function ProfileForm({ profile }: { profile: Tables<"profiles"> }) {
           <option value="public">Public</option>
         </select>
       </Field>
+      <Field label="Portfolio template">
+        <select name="portfolio_theme" defaultValue={profile.portfolio_theme} className={inputClass}>
+          <option value="minimal">Minimal</option>
+          <option value="developer">Developer</option>
+        </select>
+      </Field>
+      <Field label="Accent color">
+        <input
+          name="accent_color"
+          defaultValue={themeConfig.accent_color ?? ""}
+          placeholder="#2563eb"
+          pattern="^#[0-9a-fA-F]{6}$"
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Font pairing">
+        <select
+          name="font_pairing"
+          defaultValue={themeConfig.font_pairing ?? "sans"}
+          className={inputClass}
+        >
+          <option value="sans">Sans</option>
+          <option value="serif">Serif</option>
+          <option value="mono">Mono</option>
+        </select>
+      </Field>
+
+      <div className="flex items-center gap-4 text-sm">
+        <Link href="/preview" className="underline">
+          Preview portfolio
+        </Link>
+        {profile.portfolio_visibility !== "private" && (
+          <Link href={`/u/${profile.slug}`} target="_blank" className="underline">
+            View live portfolio ↗
+          </Link>
+        )}
+      </div>
 
       <button
         type="submit"
