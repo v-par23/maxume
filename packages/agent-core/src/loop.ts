@@ -1,7 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk"
+import { generateText, stepCountIs, tool, type LanguageModel } from "ai"
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createOpenAI } from "@ai-sdk/openai"
 import { PROPOSE_TOOL_SCHEMAS, type ChangeSetItemDraft, type ProposeToolName } from "@maxume/schemas"
-import { buildToolDefinitions } from "./tools"
+import { TOOL_DESCRIPTIONS } from "./tools"
 import { toChangeSetItemDraft } from "./change-set-mapping"
+
+export type LlmProvider = "anthropic" | "openai"
 
 export interface ProfileContext {
   profile: Record<string, unknown>
@@ -16,8 +20,12 @@ export interface AgentLoopResult {
   model: string
 }
 
-const DEFAULT_MODEL = "claude-sonnet-5"
-const MAX_TURNS = 6
+export const DEFAULT_MODELS: Record<LlmProvider, string> = {
+  anthropic: "claude-sonnet-5",
+  openai: "gpt-5",
+}
+
+const MAX_STEPS = 6
 
 const SYSTEM_PROMPT = `You are Maxume's career-update agent. The user tells you, in natural language, something that changed about their career (a promotion, a new job, a shipped project, a new skill, etc). Your job is to translate that into precise proposed changes using the propose_* tools.
 
@@ -29,87 +37,48 @@ Rules:
 - Give each tool call a short, specific "reason".
 - When you are done proposing changes, write one short final message (not a tool call) summarizing what you proposed, for the user to review.`
 
+function resolveModel(provider: LlmProvider, apiKey: string, modelId: string): LanguageModel {
+  if (provider === "openai") {
+    return createOpenAI({ apiKey })(modelId)
+  }
+  return createAnthropic({ apiKey })(modelId)
+}
+
 export async function runAgentLoop(args: {
+  provider: LlmProvider
   apiKey: string
   model?: string
   message: string
   context: ProfileContext
 }): Promise<AgentLoopResult> {
-  const { apiKey, message, context } = args
-  const model = args.model ?? DEFAULT_MODEL
-  const client = new Anthropic({ apiKey })
-  const tools = buildToolDefinitions()
+  const { provider, apiKey, message, context } = args
+  const modelId = args.model ?? DEFAULT_MODELS[provider]
+  const model = resolveModel(provider, apiKey, modelId)
 
   const proposedItems: ChangeSetItemDraft[] = []
-  let assistantSummary = ""
 
-  const messages: Anthropic.MessageParam[] = [
-    {
-      role: "user",
-      content: `Current profile context (JSON):\n${JSON.stringify(context, null, 2)}\n\nUser update: ${message}`,
-    },
-  ]
+  const tools = Object.fromEntries(
+    (Object.keys(PROPOSE_TOOL_SCHEMAS) as ProposeToolName[]).map((name) => [
+      name,
+      tool({
+        description: TOOL_DESCRIPTIONS[name],
+        inputSchema: PROPOSE_TOOL_SCHEMAS[name],
+        execute: async (input: Record<string, unknown>) => {
+          const draft = toChangeSetItemDraft(name, input)
+          proposedItems.push(draft)
+          return { recorded: draft.diff_summary }
+        },
+      }),
+    ])
+  )
 
-  for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      tools,
-      messages,
-    })
+  const result = await generateText({
+    model,
+    system: SYSTEM_PROMPT,
+    prompt: `Current profile context (JSON):\n${JSON.stringify(context, null, 2)}\n\nUser update: ${message}`,
+    tools,
+    stopWhen: stepCountIs(MAX_STEPS),
+  })
 
-    const toolUseBlocks = response.content.filter(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-    )
-    const textBlocks = response.content.filter(
-      (block): block is Anthropic.TextBlock => block.type === "text"
-    )
-
-    if (textBlocks.length > 0) {
-      assistantSummary = textBlocks.map((b) => b.text).join("\n")
-    }
-
-    if (toolUseBlocks.length === 0) {
-      break
-    }
-
-    messages.push({ role: "assistant", content: response.content })
-
-    const toolResults: Anthropic.ToolResultBlockParam[] = toolUseBlocks.map((block) => {
-      const toolName = block.name as ProposeToolName
-      const schema = PROPOSE_TOOL_SCHEMAS[toolName]
-
-      if (!schema) {
-        return {
-          type: "tool_result",
-          tool_use_id: block.id,
-          is_error: true,
-          content: `Unknown tool: ${block.name}`,
-        }
-      }
-
-      const parsed = schema.safeParse(block.input)
-      if (!parsed.success) {
-        return {
-          type: "tool_result",
-          tool_use_id: block.id,
-          is_error: true,
-          content: `Invalid input: ${parsed.error.message}`,
-        }
-      }
-
-      const draft = toChangeSetItemDraft(toolName, parsed.data)
-      proposedItems.push(draft)
-      return {
-        type: "tool_result",
-        tool_use_id: block.id,
-        content: `Recorded: ${draft.diff_summary}`,
-      }
-    })
-
-    messages.push({ role: "user", content: toolResults })
-  }
-
-  return { assistantSummary, proposedItems, model }
+  return { assistantSummary: result.text, proposedItems, model: modelId }
 }
