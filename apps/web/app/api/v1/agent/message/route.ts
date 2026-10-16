@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import { runAgentLoop, type ProfileContext } from "@maxume/agent-core"
+import { runAgentLoop, DEFAULT_MODELS, type ProfileContext, type LlmProvider } from "@maxume/agent-core"
 import type { Database } from "@maxume/db"
 import { resolveRequestUser } from "@/lib/auth/resolve-request-user"
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role"
 
-const MODEL = "claude-sonnet-5"
+// Anthropic is tried first when a user has both keys saved — arbitrary but
+// deterministic; there's no per-user "preferred provider" setting yet.
+const PROVIDER_PRIORITY: LlmProvider[] = ["anthropic", "openai"]
 
 export async function POST(request: Request) {
   const requestUser = await resolveRequestUser(request)
@@ -21,16 +23,26 @@ export async function POST(request: Request) {
   const supabase = createServiceRoleSupabaseClient()
   const { userId, source } = requestUser
 
-  const { data: apiKey } = await supabase.rpc("get_decrypted_llm_api_key", {
-    p_user_id: userId,
-    p_provider: "anthropic",
-  })
-  if (!apiKey) {
+  let provider: LlmProvider | null = null
+  let apiKey: string | null = null
+  for (const candidate of PROVIDER_PRIORITY) {
+    const { data } = await supabase.rpc("get_decrypted_llm_api_key", {
+      p_user_id: userId,
+      p_provider: candidate,
+    })
+    if (data) {
+      provider = candidate
+      apiKey = data
+      break
+    }
+  }
+  if (!provider || !apiKey) {
     return NextResponse.json(
-      { error: "No Anthropic API key saved yet. Add one in Settings → API key." },
+      { error: "No LLM API key saved yet. Add one in Settings → API key." },
       { status: 400 }
     )
   }
+  const modelId = DEFAULT_MODELS[provider]
 
   const [{ data: profile }, { data: jobs }, { data: projects }, { data: skills }] =
     await Promise.all([
@@ -53,7 +65,7 @@ export async function POST(request: Request) {
 
   const { data: run, error: runInsertError } = await supabase
     .from("agent_runs")
-    .insert({ user_id: userId, source, input_message: message, llm_model: MODEL })
+    .insert({ user_id: userId, source, input_message: message, llm_model: modelId })
     .select("*")
     .single()
 
@@ -65,7 +77,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runAgentLoop({ apiKey, model: MODEL, message, context })
+    const result = await runAgentLoop({ provider, apiKey, model: modelId, message, context })
 
     const itemsToInsert: Database["public"]["Tables"]["change_set_items"]["Insert"][] =
       result.proposedItems.map((item) => ({
