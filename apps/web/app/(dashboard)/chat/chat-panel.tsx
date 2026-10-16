@@ -112,8 +112,8 @@ export function ChatPanel({ hasApiKey }: { hasApiKey: boolean }) {
     <div className="flex max-w-2xl flex-col gap-6">
       {!hasApiKey && (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          No Anthropic API key saved yet — add one in Settings → API key before sending a
-          message.
+          No API key saved yet — add an Anthropic or OpenAI key in Settings → API key
+          before sending a message.
         </p>
       )}
 

@@ -3,10 +3,11 @@ import { ChatPanel } from "./chat-panel"
 
 export default async function ChatPage() {
   const { supabase, user } = await requireCurrentProfile()
-  const { data: hasKey } = await supabase.rpc("has_llm_api_key", {
-    p_user_id: user.id,
-    p_provider: "anthropic",
-  })
+  const [{ data: hasAnthropicKey }, { data: hasOpenaiKey }] = await Promise.all([
+    supabase.rpc("has_llm_api_key", { p_user_id: user.id, p_provider: "anthropic" }),
+    supabase.rpc("has_llm_api_key", { p_user_id: user.id, p_provider: "openai" }),
+  ])
+  const hasKey = hasAnthropicKey || hasOpenaiKey
 
   return (
     <div className="flex flex-col gap-6">

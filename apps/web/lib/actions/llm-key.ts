@@ -6,6 +6,8 @@ import { createServiceRoleSupabaseClient } from "@/lib/supabase/service-role"
 
 export type LlmKeyFormState = { error?: string; success?: boolean }
 
+const VALID_PROVIDERS = new Set(["anthropic", "openai"])
+
 export async function saveLlmApiKey(
   _prev: LlmKeyFormState,
   formData: FormData
@@ -15,6 +17,11 @@ export async function saveLlmApiKey(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: "Not signed in." }
+
+  const provider = String(formData.get("provider") ?? "")
+  if (!VALID_PROVIDERS.has(provider)) {
+    return { error: "Unknown provider." }
+  }
 
   const apiKey = String(formData.get("api_key") ?? "").trim()
   if (apiKey.length < 20) {
@@ -27,7 +34,7 @@ export async function saveLlmApiKey(
   const serviceClient = createServiceRoleSupabaseClient()
   const { error } = await serviceClient.rpc("set_llm_api_key", {
     p_user_id: user.id,
-    p_provider: "anthropic",
+    p_provider: provider,
     p_api_key: apiKey,
   })
 
