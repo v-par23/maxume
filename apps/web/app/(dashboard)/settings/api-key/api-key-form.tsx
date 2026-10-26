@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
-import { saveLlmApiKey, type LlmKeyFormState } from "@/lib/actions/llm-key"
+import { saveLlmApiKey, removeLlmApiKey, type LlmKeyFormState } from "@/lib/actions/llm-key"
 
 const initialState: LlmKeyFormState = {}
 
@@ -35,13 +35,25 @@ export function ApiKeyForm({
           className="rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-50"
         />
       </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-fit rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-50 hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
-      >
-        {pending ? "Saving…" : hasKey ? "Replace key" : "Save key"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-fit rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-50 hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-50 dark:text-neutral-900 dark:hover:bg-neutral-200"
+        >
+          {pending ? "Saving…" : hasKey ? "Replace key" : "Save key"}
+        </button>
+        {hasKey && (
+          <button
+            type="submit"
+            formAction={removeLlmApiKey}
+            formNoValidate
+            className="text-sm text-red-600 hover:underline dark:text-red-400"
+          >
+            Remove key
+          </button>
+        )}
+      </div>
       {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && <p className="text-sm text-green-600 dark:text-green-400">Saved.</p>}
     </form>

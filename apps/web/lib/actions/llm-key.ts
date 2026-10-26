@@ -43,3 +43,19 @@ export async function saveLlmApiKey(
   revalidatePath("/settings/api-key")
   return { success: true }
 }
+
+export async function removeLlmApiKey(formData: FormData) {
+  const supabase = await getServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  const provider = String(formData.get("provider") ?? "")
+  if (!VALID_PROVIDERS.has(provider)) return
+
+  const serviceClient = createServiceRoleSupabaseClient()
+  await serviceClient.rpc("remove_llm_api_key", { p_user_id: user.id, p_provider: provider })
+
+  revalidatePath("/settings/api-key")
+}

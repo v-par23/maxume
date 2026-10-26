@@ -529,6 +529,7 @@ export type Database = {
       };
       get_portfolio_by_slug: { Args: { p_slug: string }; Returns: Json };
       has_llm_api_key: { Args: { p_provider?: string; p_user_id: string }; Returns: boolean };
+      remove_llm_api_key: { Args: { p_provider: string; p_user_id: string }; Returns: undefined };
       set_connected_account_token: {
         Args: {
           p_access_token: string;
